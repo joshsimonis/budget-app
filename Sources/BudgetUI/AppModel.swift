@@ -71,7 +71,8 @@ final class AppModel {
         self.today = today
         self.projection = projection
         self.grid = GridBuilder.build(projection, document: initial, granularity: .week)
-        self.hasSavedDocument = loaded != nil
+        // An injected document (previews, tests) hasn't been saved yet.
+        self.hasSavedDocument = document == nil && loaded != nil
         self.errorMessage = loadError
         startClock()
         terminationObserver = NotificationCenter.default.addObserver(
