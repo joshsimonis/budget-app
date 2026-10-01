@@ -1,0 +1,12 @@
+.DS_Store
+/.build/
+/build/
+/.swiftpm/
+xcuserdata/
+DerivedData/
+*.xcodeproj/
+# Never commit real budget data or caches
+*.budget.json
+budget.json
+up-cache.json
+.env
