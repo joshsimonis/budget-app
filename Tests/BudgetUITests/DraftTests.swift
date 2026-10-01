@@ -83,7 +83,7 @@ private func d(_ y: Int, _ m: Int, _ day: Int) -> LocalDate { LocalDate(y, m, da
 
     @Test func screensRender() {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("budget-ui-\(UUID().uuidString)")
-        let model = AppModel(store: DocumentStore(directory: directory), document: SampleData.demo(today: d(2026, 10, 1)))
+        let model = AppModel(store: DocumentStore(directory: directory), document: SampleData.demo(today: d(2026, 10, 1)), tokenStore: .memory())
         let views: [AnyView] = [
             AnyView(ItemsListView()),
             AnyView(IncomeListView()),

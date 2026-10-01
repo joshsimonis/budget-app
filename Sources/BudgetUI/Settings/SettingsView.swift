@@ -8,6 +8,8 @@ struct SettingsView: View {
         TabView {
             GeneralSettingsView()
                 .tabItem { Label("General", systemImage: "gearshape") }
+            UpSettingsView()
+                .tabItem { Label("Up Bank", systemImage: "creditcard") }
             AccountsSettingsView()
                 .tabItem { Label("Accounts", systemImage: "building.columns") }
             HolidaySettingsView()

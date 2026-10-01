@@ -106,6 +106,10 @@ public struct DocumentStore: Sendable {
         try? Data(contentsOf: directory.appendingPathComponent(name))
     }
 
+    public func delete(named name: String) {
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+    }
+
     /// Copies the saved budget into Backups now, regardless of when the last backup was.
     public func backupNow(now: Date = Date()) throws {
         try backup(now: now)

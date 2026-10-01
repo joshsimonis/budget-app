@@ -59,7 +59,7 @@ public struct Projection: Sendable {
 
 public enum ProjectionEngine {
     /// Projects the budget over `horizon` (default: from the settings) as of `today`.
-    public static func run(document: BudgetDocument, today: LocalDate, horizon: DateSpan? = nil) -> Projection {
+    public static func run(document: BudgetDocument, today: LocalDate, horizon: DateSpan? = nil, bank: BankCache? = nil) -> Projection {
         let requested = horizon ?? PlanContext.defaultHorizon(settings: document.settings, today: today)
         // Start from the latest balance you entered before the window, so the running total carries in.
         var computeStart = requested.start

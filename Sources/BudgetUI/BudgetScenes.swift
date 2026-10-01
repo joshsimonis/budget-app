@@ -62,6 +62,12 @@ struct BudgetCommands: Commands {
             Button("Pay Calculator") { openWindow(id: "pay-calculator") }
                 .keyboardShortcut("p", modifiers: [.command, .shift])
         }
+        CommandGroup(after: .newItem) {
+            Divider()
+            Button("Sync with Up") { Task { await model.syncNow() } }
+                .keyboardShortcut("r", modifiers: .command)
+                .disabled(!model.hasUpToken)
+        }
         CommandMenu("Go") {
             Button("Today") { model.goToToday() }
                 .keyboardShortcut("t", modifiers: .command)
@@ -111,6 +117,7 @@ struct RootView: View {
                 case .items: ItemsListView()
                 case .income: IncomeListView()
                 case .periods: PeriodsListView()
+                case .transactions: TransactionsView()
                 }
             }
         }

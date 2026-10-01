@@ -4,7 +4,7 @@ import Foundation
 import Observation
 
 enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
-    case cashFlow, items, income, periods
+    case cashFlow, items, income, periods, transactions
 
     var id: String { rawValue }
 
@@ -14,6 +14,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .items: "Bills & Spending"
         case .income: "Income"
         case .periods: "Periods"
+        case .transactions: "Transactions"
         }
     }
 
@@ -23,6 +24,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .items: "list.bullet.rectangle"
         case .income: "banknote"
         case .periods: "calendar.badge.clock"
+        case .transactions: "creditcard"
         }
     }
 }
@@ -50,13 +52,27 @@ final class AppModel {
     /// Set by the File menu; the Bills & Spending list opens the editor for it.
     var pendingNewItem: ItemKind?
 
+    /// Bank data from Up (nil until the first sync).
+    private(set) var bank: BankCache?
+    private(set) var syncStatus: SyncStatus = .idle
+    private(set) var hasUpToken = false
+    var syncNotes: [String] = []
+
     let store: DocumentStore
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     @ObservationIgnored private var clockTask: Task<Void, Never>?
     @ObservationIgnored private var terminationObserver: NSObjectProtocol?
+    @ObservationIgnored private var wakeObserver: NSObjectProtocol?
+    @ObservationIgnored var syncTask: Task<Void, Never>?
+    @ObservationIgnored let tokenStore: TokenStore
 
-    init(store: DocumentStore = DocumentStore(directory: DocumentStore.defaultDirectory()), document: BudgetDocument? = nil) {
+    init(
+        store: DocumentStore = DocumentStore(directory: DocumentStore.defaultDirectory()),
+        document: BudgetDocument? = nil,
+        tokenStore: TokenStore = .keychain
+    ) {
         self.store = store
+        self.tokenStore = tokenStore
         var loaded = document
         var loadError: String?
         if loaded == nil {
@@ -76,7 +92,21 @@ final class AppModel {
         // An injected document (previews, tests) hasn't been saved yet.
         self.hasSavedDocument = document == nil && loaded != nil
         self.errorMessage = loadError
+        if document == nil, let data = store.read(named: AppModel.bankCacheName) {
+            self.bank = try? BankCache.decode(data)
+        }
+        self.hasUpToken = tokenStore.read() != nil
+        if bank != nil { recompute() }
         startClock()
+        startSyncSchedule()
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                Task { await self.syncNow() }
+            }
+        }
         terminationObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.willTerminateNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -111,8 +141,22 @@ final class AppModel {
 
     func recompute() {
         today = document.settings.timeZone.today()
-        projection = ProjectionEngine.run(document: document, today: today)
+        projection = ProjectionEngine.run(document: document, today: today, bank: bank)
         rebuildGrid()
+    }
+
+    /// Replaces the bank cache (after a sync or disconnect) and recomputes.
+    func setBank(_ cache: BankCache?) {
+        bank = cache
+        recompute()
+    }
+
+    func setSyncStatus(_ status: SyncStatus) {
+        syncStatus = status
+    }
+
+    func setHasUpToken(_ value: Bool) {
+        hasUpToken = value
     }
 
     private func rebuildGrid() {

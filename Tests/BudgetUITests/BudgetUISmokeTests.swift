@@ -8,7 +8,7 @@ import Testing
 @Suite struct BudgetUISmokeTests {
     private func makeModel(_ document: BudgetDocument = SampleData.demo(today: LocalDate(2026, 10, 1))) -> AppModel {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("budget-ui-\(UUID().uuidString)")
-        return AppModel(store: DocumentStore(directory: directory), document: document)
+        return AppModel(store: DocumentStore(directory: directory), document: document, tokenStore: .memory())
     }
 
     @Test func rendersCashFlow() {
