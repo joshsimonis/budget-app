@@ -106,12 +106,22 @@ public struct DocumentStore: Sendable {
         try? Data(contentsOf: directory.appendingPathComponent(name))
     }
 
+    /// Copies the saved budget into Backups now, regardless of when the last backup was.
+    public func backupNow(now: Date = Date()) throws {
+        try backup(now: now)
+    }
+
     private func backupIfDue(now: Date) throws {
         guard FileManager.default.fileExists(atPath: documentURL.path) else { return }
         if let newest = backups().first, let stamp = Self.timestamp(from: newest),
            now.timeIntervalSince(stamp) < minimumBackupInterval {
             return
         }
+        try backup(now: now)
+    }
+
+    private func backup(now: Date) throws {
+        guard FileManager.default.fileExists(atPath: documentURL.path) else { return }
         try FileManager.default.createDirectory(at: backupsDirectory, withIntermediateDirectories: true)
         let name = "budget-\(Self.stampString(now)).json"
         let target = backupsDirectory.appendingPathComponent(name)

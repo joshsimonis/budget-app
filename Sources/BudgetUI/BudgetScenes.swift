@@ -18,6 +18,16 @@ public struct BudgetScenes: Scene {
         .commands {
             BudgetCommands(model: model)
         }
+
+        Window("Pay Calculator", id: "pay-calculator") {
+            PayCalculatorView()
+        }
+        .defaultSize(width: 980, height: 620)
+
+        SwiftUI.Settings {
+            SettingsView()
+                .environment(model)
+        }
     }
 }
 
@@ -38,8 +48,20 @@ public final class BudgetAppDelegate: NSObject, NSApplicationDelegate {
 
 struct BudgetCommands: Commands {
     let model: AppModel
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("New Bill…") { newItem(.bill) }
+                .keyboardShortcut("n", modifiers: .command)
+            Button("New Envelope…") { newItem(.envelope) }
+            Button("New One-off…") { newItem(.oneOff) }
+                .keyboardShortcut("n", modifiers: [.command, .shift])
+        }
+        CommandGroup(after: .windowArrangement) {
+            Button("Pay Calculator") { openWindow(id: "pay-calculator") }
+                .keyboardShortcut("p", modifiers: [.command, .shift])
+        }
         CommandMenu("Go") {
             Button("Today") { model.goToToday() }
                 .keyboardShortcut("t", modifiers: .command)
@@ -59,6 +81,11 @@ struct BudgetCommands: Commands {
             Button("By Month") { model.granularity = .month }
                 .keyboardShortcut("3", modifiers: .command)
         }
+    }
+
+    private func newItem(_ kind: ItemKind) {
+        model.sidebar = .items
+        model.pendingNewItem = kind
     }
 }
 

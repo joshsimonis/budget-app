@@ -47,6 +47,8 @@ final class AppModel {
     var visibleColumns = 12
     var sidebar: SidebarItem? = .cashFlow
     var errorMessage: String?
+    /// Set by the File menu; the Bills & Spending list opens the editor for it.
+    var pendingNewItem: ItemKind?
 
     let store: DocumentStore
     @ObservationIgnored private var saveTask: Task<Void, Never>?
