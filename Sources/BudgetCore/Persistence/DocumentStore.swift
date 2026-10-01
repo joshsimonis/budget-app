@@ -140,7 +140,7 @@ public struct DocumentStore: Sendable {
         return String(digits.prefix(8)) + "-" + String(digits.dropFirst(8))
     }
 
-    static func timestamp(from url: URL) -> Date? {
+    public static func timestamp(from url: URL) -> Date? {
         let name = url.deletingPathExtension().lastPathComponent // budget-20261001-093015
         let parts = name.split(separator: "-")
         guard parts.count == 3, parts[1].count == 8, parts[2].count == 6 else { return nil }
