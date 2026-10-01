@@ -164,6 +164,9 @@ extension AppModel {
             lines.append("Transactions: \(bank.transactions.count) (held: \(bank.transactions.filter { $0.status == .held }.count), transfers: \(bank.transactions.filter(\.isTransfer).count), with round-ups: \(bank.transactions.filter { $0.roundUp != nil }.count))")
             lines.append("Accounts: " + bank.accounts.map { "\($0.accountType)/\($0.ownershipType)" }.joined(separator: ", "))
             lines.append("Categories: \(bank.categories.count), tags: \(bank.tags.count)")
+            if let check = bank.balanceCheck {
+                lines.append("Balance check since previous sync: \(check.transactionCount) new transactions, difference \(MoneyFormat.string(check.difference))")
+            }
         }
         if case .failed(let message) = syncStatus { lines.append("Last error: \(message)") }
         lines += syncNotes.map { "Note: \($0)" }

@@ -63,7 +63,7 @@ struct CashFlowView: View {
     }
 }
 
-/// Headline figures above the chart.
+/// Headline figures above the chart, and anything that needs attention.
 struct SummaryStrip: View {
     @Environment(AppModel.self) private var model
 
@@ -72,48 +72,58 @@ struct SummaryStrip: View {
         let today = projection.ledger(on: projection.today)
         let nextPay = projection.payEvents.first { $0.payDate >= projection.today && $0.state == .planned }
         let estimate = projection.estimates.first { $0.year == projection.today.financialYear }
-        HStack(spacing: 10) {
-            if let bankBalance = projection.bankBalance {
+        let missed = projection.flows.filter { $0.status == .missed }.sorted { $0.date > $1.date }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                if let bankBalance = projection.bankBalance {
+                    StatTile(
+                        title: "In Up now",
+                        value: Format.money(bankBalance),
+                        detail: model.syncStatus == .syncing ? "Syncing…" : syncDetail
+                    )
+                }
                 StatTile(
-                    title: "In Up now",
-                    value: Format.money(bankBalance),
-                    detail: model.syncStatus == .syncing ? "Syncing…" : syncDetail
+                    title: "Balance today",
+                    value: today?.closing.map(Format.money) ?? "Not set",
+                    detail: today?.closing == nil ? "Enter a balance below" : "After today's items"
                 )
+                if let low = projection.lowestUpcoming, let amount = low.closing {
+                    StatTile(
+                        title: "Lowest ahead",
+                        value: Format.money(amount),
+                        detail: Format.date(low.date),
+                        tint: amount.isNegative ? .red : (isLow(amount) ? .orange : nil)
+                    )
+                }
+                if let nextPay {
+                    StatTile(title: "Next pay", value: Format.money(nextPay.received), detail: "\(nextPay.payDate.weekday.shortName) \(nextPay.payDate.dayMonth())")
+                }
+                if let estimate {
+                    let position = estimate.position
+                    StatTile(
+                        title: "Tax \(estimate.year.label)",
+                        value: position.isNegative ? "Owe ~\(Format.wholeDollars(-position))" : "Refund ~\(Format.wholeDollars(position))",
+                        detail: estimate.isEstimate ? "Estimate, rates assumed" : "Estimate",
+                        tint: position.isNegative ? .orange : nil
+                    )
+                }
+                Spacer(minLength: 0)
             }
-            StatTile(
-                title: "Balance today",
-                value: today?.closing.map(Format.money) ?? "Not set",
-                detail: today?.closing == nil ? "Set a balance in the grid" : "After what's still due today"
-            )
-            if let low = projection.lowestUpcoming, let amount = low.closing {
-                StatTile(
-                    title: "Lowest ahead",
-                    value: Format.money(amount),
-                    detail: Format.date(low.date),
-                    tint: amount.isNegative ? .red : (isLow(amount) ? .orange : nil)
-                )
+            if !missed.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                    Text(missed.count == 1
+                         ? "\(missed[0].name) (\(missed[0].date.dayMonth())) hasn't shown up at the bank."
+                         : "\(missed.count) planned items haven't shown up at the bank, most recently \(missed[0].name) (\(missed[0].date.dayMonth())).")
+                    Button("Show") { model.show(missed[0].date) }
+                        .buttonStyle(.link)
+                }
+                .font(.callout)
             }
-            if let nextPay {
-                StatTile(title: "Next pay", value: Format.money(nextPay.received), detail: "\(nextPay.sourceName), \(Format.date(nextPay.payDate))")
-            }
-            if let estimate {
-                let position = estimate.position
-                StatTile(
-                    title: "Tax \(estimate.year.label)",
-                    value: position.isNegative ? "Owing ~\(Format.wholeDollars(-position))" : "Refund ~\(Format.wholeDollars(position))",
-                    detail: estimate.isEstimate ? "Estimate (some rates assumed)" : "Estimate from planned pays",
-                    tint: position.isNegative ? .orange : nil
-                )
-            }
-            Spacer(minLength: 0)
-        }
-        .overlay(alignment: .topTrailing) {
-            if let warning = projection.warnings.first {
+            ForEach(projection.warnings.filter { !$0.contains("shown up at the bank") }, id: \.self) { warning in
                 Label(warning, systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption)
+                    .font(.callout)
                     .foregroundStyle(.orange)
-                    .lineLimit(2)
-                    .frame(maxWidth: 320, alignment: .trailing)
             }
         }
     }
@@ -122,7 +132,10 @@ struct SummaryStrip: View {
         if case .failed = model.syncStatus { return "Last sync failed" }
         guard let last = model.bank?.lastSync else { return "" }
         let minutes = Int(Date().timeIntervalSince(last) / 60)
-        return minutes < 1 ? "Synced just now" : (minutes < 60 ? "Synced \(minutes) min ago" : "Synced \(LocalDate(chartDate: last).dayMonth())")
+        if minutes < 1 { return "Synced just now" }
+        if minutes < 60 { return "Synced \(minutes) min ago" }
+        let day = model.document.settings.timeZone.localDate(for: last)
+        return day == model.today ? "Synced today" : "Synced \(day.dayMonth())"
     }
 
     private func isLow(_ amount: Money) -> Bool {

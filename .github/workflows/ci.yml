@@ -82,16 +82,19 @@ jobs:
             sleep 2
           }
           capture cashFlow week
+          capture cashFlow month
           capture income week
+          capture suggestions week
+          capture transactions week
           ls -la build/screens
       - uses: actions/upload-artifact@v4
         with:
           name: screenshots
           path: build/screens
           retention-days: 14
-      - name: Print screenshots (base64 JPEG)
+      - name: Print the Cash Flow screenshot (base64 JPEG)
         run: |
-          for f in build/screens/*.png; do
+          for f in build/screens/cashFlow-week.png; do
             sips -Z 1200 -s format jpeg -s formatOptions 35 "$f" --out "${f%.png}.jpg" >/dev/null
             echo "SCREENSHOT-BEGIN $(basename "${f%.png}")"
             base64 -i "${f%.png}.jpg" | fold -w 900 | sed 's/^/SHOT /'

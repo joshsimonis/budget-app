@@ -233,8 +233,7 @@ struct DataSettingsView: View {
                 ForEach(backups.prefix(10), id: \.self) { url in
                     HStack {
                         Text(DocumentStore.timestamp(from: url).map { stamp in
-                            let date = LocalDate(chartDate: stamp)
-                            return Format.date(date)
+                            Format.date(model.document.settings.timeZone.localDate(for: stamp))
                         } ?? url.lastPathComponent)
                         Text(url.lastPathComponent).font(.caption).foregroundStyle(.secondary)
                         Spacer()

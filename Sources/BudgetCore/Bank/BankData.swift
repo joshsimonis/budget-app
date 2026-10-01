@@ -111,9 +111,12 @@ public struct BankCache: Codable, Hashable, Sendable {
     public var coverageStart: Date?
     public var lastSync: Date?
     public var categoriesFetchedAt: Date?
+    /// How the last sync's balance change compared with the transactions it brought in.
+    public var balanceCheck: BalanceCheck?
 
     public init(accounts: [BankAccount] = [], transactions: [BankTransaction] = [], categories: [BankCategory] = [],
-                tags: [String] = [], coverageStart: Date? = nil, lastSync: Date? = nil, categoriesFetchedAt: Date? = nil) {
+                tags: [String] = [], coverageStart: Date? = nil, lastSync: Date? = nil, categoriesFetchedAt: Date? = nil,
+                balanceCheck: BalanceCheck? = nil) {
         self.accounts = accounts
         self.transactions = transactions
         self.categories = categories
@@ -121,6 +124,7 @@ public struct BankCache: Codable, Hashable, Sendable {
         self.coverageStart = coverageStart
         self.lastSync = lastSync
         self.categoriesFetchedAt = categoriesFetchedAt
+        self.balanceCheck = balanceCheck
     }
 
     public static let empty = BankCache()
@@ -251,5 +255,40 @@ public enum LinkRepair {
         let removedIDs = Set(removed.map(\.id))
         state.ignoredTransactionIDs.removeAll { removedIDs.contains($0) }
         return notes
+    }
+}
+
+/// Compares the change in total balance between two syncs with the transactions created in
+/// between. A steady gap points at something the app doesn't see (for example round-ups).
+public struct BalanceCheck: Codable, Hashable, Sendable {
+    public var from: Date
+    public var to: Date
+    public var balanceChange: Money
+    public var transactionTotal: Money
+    public var transactionCount: Int
+
+    public init(from: Date, to: Date, balanceChange: Money, transactionTotal: Money, transactionCount: Int) {
+        self.from = from
+        self.to = to
+        self.balanceChange = balanceChange
+        self.transactionTotal = transactionTotal
+        self.transactionCount = transactionCount
+    }
+
+    public var difference: Money { balanceChange - transactionTotal }
+
+    public static func make(previous: BankCache, current: BankCache, now: Date) -> BalanceCheck? {
+        guard let from = previous.lastSync, !previous.accounts.isEmpty else { return nil }
+        let ids = Set(previous.accounts.map(\.id)).intersection(current.accounts.map(\.id))
+        let before = previous.accounts.filter { ids.contains($0.id) }.reduce(Money.zero) { $0 + $1.balance }
+        let after = current.accounts.filter { ids.contains($0.id) }.reduce(Money.zero) { $0 + $1.balance }
+        let fresh = current.transactions.filter { ids.contains($0.accountID) && $0.createdAt > from && previous.transaction($0.id) == nil }
+        // Held transactions that changed amount when they settled also move the balance.
+        let changed = current.transactions.compactMap { transaction -> Money? in
+            guard ids.contains(transaction.accountID), let old = previous.transaction(transaction.id), old.balanceDelta != transaction.balanceDelta else { return nil }
+            return transaction.balanceDelta - old.balanceDelta
+        }
+        let total = fresh.reduce(Money.zero) { $0 + $1.balanceDelta } + changed.reduce(Money.zero, +)
+        return BalanceCheck(from: from, to: now, balanceChange: after - before, transactionTotal: total, transactionCount: fresh.count)
     }
 }

@@ -71,7 +71,7 @@ struct UpSettingsView: View {
             }
             if let bank = model.bank {
                 LabeledContent("Transactions") {
-                    Text("\(bank.transactions.count)" + (bank.coverageStart.map { " since \(LocalDate(chartDate: $0).dayMonth(includeYear: true))" } ?? ""))
+                    Text("\(bank.transactions.count)" + (bank.coverageStart.map { " since \(model.document.settings.timeZone.localDate(for: $0).dayMonth(includeYear: true))" } ?? ""))
                 }
             }
             HStack {
@@ -120,7 +120,7 @@ struct UpSettingsView: View {
         let minutes = Int(Date().timeIntervalSince(last) / 60)
         if minutes < 1 { return "Synced just now" }
         if minutes < 60 { return "Synced \(minutes) min ago" }
-        return "Synced \(LocalDate(chartDate: last).dayMonth())"
+        return "Synced \(model.document.settings.timeZone.localDate(for: last).dayMonth())"
     }
 }
 

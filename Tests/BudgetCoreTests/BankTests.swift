@@ -62,3 +62,24 @@ private func txn(_ id: String, _ cents: Int64, _ created: String, status: Transa
         #expect(!TextMatch.matches(["optus", " "], t))
     }
 }
+
+@Suite struct BalanceCheckTests {
+    @Test func comparesBalanceChangeWithNewTransactions() {
+        let account = BankAccount(id: "a", name: "Spending", accountType: "TRANSACTIONAL", ownershipType: "INDIVIDUAL", balance: Money(cents: 10_000))
+        var previous = BankCache(accounts: [account], transactions: [txn("held", -1000, "2026-09-30T10:00:00+10:00", status: .held)],
+                                 lastSync: at("2026-10-01T00:00:00+10:00"))
+        previous.accounts[0].balance = Money(cents: 10_000)
+        var current = previous
+        current.accounts[0].balance = Money(cents: 8_420)
+        current.transactions = [
+            txn("held", -1050, "2026-09-30T10:00:00+10:00"),
+            txn("new", -1500, "2026-10-01T09:00:00+10:00"),
+        ]
+        current.transactions[1].roundUp = Money(cents: -30)
+        let check = BalanceCheck.make(previous: previous, current: current, now: at("2026-10-01T12:00:00+10:00"))
+        #expect(check?.balanceChange == Money(cents: -1_580))
+        #expect(check?.transactionTotal == Money(cents: -1_580)) // −15.30 new (with round-up) − 0.50 settled change
+        #expect(check?.difference == .zero)
+        #expect(check?.transactionCount == 1)
+    }
+}

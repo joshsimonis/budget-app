@@ -22,6 +22,7 @@ public struct UpSyncService: Sendable {
     /// before the last sync to catch settlements, recategorising and deletions. If anything
     /// fails, the cache passed in is left as it was.
     public func sync(_ cache: BankCache, now: Date = Date(), initialMonths: Int = 13) async throws -> SyncResult {
+        let previous = cache
         var cache = cache
         let isFirst = cache.coverageStart == nil
         let windowStart: Date
@@ -52,6 +53,7 @@ public struct UpSyncService: Sendable {
             cache.categoriesFetchedAt = now
         }
         if isFirst { cache.coverageStart = windowStart }
+        cache.balanceCheck = BalanceCheck.make(previous: previous, current: cache, now: now) ?? previous.balanceCheck
         cache.lastSync = now
         return SyncResult(cache: cache, report: report, fetchedCount: fetched.count, isFirstSync: isFirst)
     }

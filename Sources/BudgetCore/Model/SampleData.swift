@@ -245,8 +245,8 @@ extension SampleData {
 
         return BankCache(
             accounts: [
-                BankAccount(id: upIDs[0], name: "Bills", accountType: "SAVER", ownershipType: "INDIVIDUAL", balance: .dollars(2_150)),
-                BankAccount(id: upIDs[1], name: "Spending", accountType: "TRANSACTIONAL", ownershipType: "INDIVIDUAL", balance: Money(cents: 184_250)),
+                BankAccount(id: upIDs[0], name: "Bills", accountType: "SAVER", ownershipType: "INDIVIDUAL", balance: .dollars(3_150)),
+                BankAccount(id: upIDs[1], name: "Spending", accountType: "TRANSACTIONAL", ownershipType: "INDIVIDUAL", balance: Money(cents: 384_250)),
             ],
             transactions: transactions.sorted { ($0.createdAt, $0.id) < ($1.createdAt, $1.id) },
             categories: [
