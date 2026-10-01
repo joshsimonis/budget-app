@@ -1,0 +1,555 @@
+{
+  "accounts" : [
+    {
+      "id" : "00000000-0000-4000-8000-000000000001",
+      "includedInTotal" : true,
+      "name" : "Essentials",
+      "sortIndex" : 0
+    },
+    {
+      "id" : "00000000-0000-4000-8000-000000000002",
+      "includedInTotal" : true,
+      "name" : "Spending",
+      "sortIndex" : 1
+    }
+  ],
+  "checkpoints" : [
+    {
+      "amount" : 400000,
+      "date" : "2027-02-01",
+      "id" : "00000000-0000-4000-8000-000000000032",
+      "note" : ""
+    },
+    {
+      "amount" : 145000,
+      "date" : "2027-03-15",
+      "id" : "00000000-0000-4000-8000-000000000033",
+      "note" : ""
+    }
+  ],
+  "incomes" : [
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000002",
+      "afterTaxSuperPerPay" : 0,
+      "archived" : false,
+      "claimsTaxFreeThreshold" : true,
+      "daysWorked" : [
+
+      ],
+      "gstRegistered" : false,
+      "id" : "00000000-0000-4000-8000-00000000001E",
+      "kind" : "dayRate",
+      "name" : "Contract",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "paySchedule" : {
+        "adjustment" : "none",
+        "anchor" : "2027-02-03",
+        "rule" : {
+          "interval" : 1,
+          "monthEnd" : false,
+          "unit" : "week"
+        }
+      },
+      "periodEndOffsetDays" : 3,
+      "rates" : [
+        {
+          "amount" : 70000,
+          "from" : "2026-07-01",
+          "id" : "00000000-0000-4000-8000-000000000406",
+          "superMode" : "onTop",
+          "unit" : "daily"
+        }
+      ],
+      "salarySacrificePerPay" : 0,
+      "setAsideMode" : "estimate",
+      "setAsidePercentBasisPoints" : 3000,
+      "sortIndex" : 0,
+      "start" : "2026-07-01",
+      "unpaidLeave" : [
+
+      ],
+      "workDays" : [
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  ],
+  "items" : [
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000001",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-00000000000A",
+      "name" : "Rent",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 70000,
+          "id" : "00000000-0000-4000-8000-0000000003F2",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-02-01",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "week"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 0
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000002",
+      "archived" : false,
+      "envelope" : {
+        "categoryIDs" : [
+          "groceries"
+        ],
+        "tagIDs" : [
+
+        ]
+      },
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-00000000000B",
+      "name" : "Food",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 30000,
+          "id" : "00000000-0000-4000-8000-0000000003F3",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-02-01",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "week"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 1
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000002",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-00000000000C",
+      "name" : "Transport",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 2000,
+          "id" : "00000000-0000-4000-8000-0000000003F4",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-02-01",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "week"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 2
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000002",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-00000000000D",
+      "name" : "Weekly transfer",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 9000,
+          "id" : "00000000-0000-4000-8000-0000000003F5",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-02-05",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "week"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 3
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000001",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-00000000000E",
+      "name" : "Phone",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 4500,
+          "id" : "00000000-0000-4000-8000-0000000003F6",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-01-15",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "month"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 4
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000001",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-00000000000F",
+      "name" : "Streaming",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 1299,
+          "id" : "00000000-0000-4000-8000-0000000003F7",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-01-28",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "month"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 5
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000001",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-000000000010",
+      "name" : "Gym",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 6000,
+          "id" : "00000000-0000-4000-8000-0000000003F8",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-01-31",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "month"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 6
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000001",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-000000000011",
+      "name" : "Health",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 16000,
+          "id" : "00000000-0000-4000-8000-0000000003F9",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-01-10",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "month"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 7
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000001",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-000000000012",
+      "name" : "Car",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 42000,
+          "id" : "00000000-0000-4000-8000-0000000003FA",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-01-20",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "month"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 8
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000001",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-000000000013",
+      "name" : "Family",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 90000,
+          "end" : "2027-02-28",
+          "id" : "00000000-0000-4000-8000-0000000003FB",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-01-01",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "month"
+            }
+          },
+          "start" : "2026-07-01"
+        },
+        {
+          "amount" : 78000,
+          "id" : "00000000-0000-4000-8000-00000000045F",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-01-01",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "month"
+            }
+          },
+          "start" : "2027-03-01"
+        }
+      ],
+      "sortIndex" : 9
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000001",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-000000000014",
+      "name" : "Credit card",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 20000,
+          "id" : "00000000-0000-4000-8000-0000000003FC",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-02-04",
+            "rule" : {
+              "interval" : 2,
+              "monthEnd" : false,
+              "unit" : "week"
+            }
+          },
+          "start" : "2026-07-01"
+        }
+      ],
+      "sortIndex" : 10
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000002",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-000000000029",
+      "name" : "Travel",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "periodID" : "00000000-0000-4000-8000-000000000028",
+      "segments" : [
+        {
+          "amount" : 45000,
+          "id" : "00000000-0000-4000-8000-000000000411",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-02-15",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "week"
+            }
+          },
+          "start" : "2027-02-15"
+        }
+      ],
+      "sortIndex" : 11
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000001",
+      "archived" : false,
+      "flow" : "outflow",
+      "id" : "00000000-0000-4000-8000-00000000002A",
+      "name" : "Rent (prepaid)",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "periodID" : "00000000-0000-4000-8000-000000000028",
+      "segments" : [
+        {
+          "amount" : 210000,
+          "end" : "2027-02-15",
+          "id" : "00000000-0000-4000-8000-000000000412",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-02-15",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "once"
+            }
+          },
+          "start" : "2027-02-15"
+        }
+      ],
+      "sortIndex" : 12
+    },
+    {
+      "accountID" : "00000000-0000-4000-8000-000000000002",
+      "archived" : false,
+      "flow" : "inflow",
+      "id" : "00000000-0000-4000-8000-00000000002B",
+      "name" : "Sold bike",
+      "notes" : "",
+      "overrides" : [
+
+      ],
+      "segments" : [
+        {
+          "amount" : 35000,
+          "end" : "2027-03-13",
+          "id" : "00000000-0000-4000-8000-000000000413",
+          "recurrence" : {
+            "adjustment" : "none",
+            "anchor" : "2027-03-13",
+            "rule" : {
+              "interval" : 1,
+              "monthEnd" : false,
+              "unit" : "once"
+            }
+          },
+          "start" : "2027-03-13"
+        }
+      ],
+      "sortIndex" : 13
+    }
+  ],
+  "periods" : [
+    {
+      "color" : "green",
+      "id" : "00000000-0000-4000-8000-000000000028",
+      "name" : "Travel",
+      "notes" : "",
+      "pausedItemIDs" : [
+        "00000000-0000-4000-8000-00000000000A",
+        "00000000-0000-4000-8000-00000000000B",
+        "00000000-0000-4000-8000-00000000000C",
+        "00000000-0000-4000-8000-00000000000D"
+      ],
+      "span" : {
+        "end" : "2027-03-07",
+        "start" : "2027-02-15"
+      },
+      "unpaidIncomeIDs" : [
+        "00000000-0000-4000-8000-00000000001E"
+      ]
+    }
+  ],
+  "reconciliation" : {
+    "dismissedSuggestionKeys" : [
+
+    ],
+    "ignoredTransactionIDs" : [
+
+    ],
+    "manualLinks" : [
+
+    ],
+    "markedPaid" : [
+
+    ]
+  },
+  "schemaVersion" : 1,
+  "settings" : {
+    "applyStandardDeduction" : true,
+    "extraHolidays" : [
+
+    ],
+    "graceDays" : 4,
+    "historyWeeks" : 8,
+    "holidayRegion" : "VIC",
+    "horizonMonths" : 24,
+    "payDayAdjustment" : "preceding",
+    "removedHolidays" : [
+
+    ],
+    "timeZoneID" : "Australia\/Melbourne"
+  }
+}
