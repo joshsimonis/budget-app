@@ -17,7 +17,7 @@ public enum CellStatus: String, Hashable, Sendable {
     case actual
 }
 
-public struct GridCell: Hashable, Sendable {
+public struct CashFlowCell: Hashable, Sendable {
     /// Display amount (always positive; the row says whether it's money in or out). Nil = blank.
     public var amount: Money?
     public var status: CellStatus
@@ -35,14 +35,14 @@ public struct GridCell: Hashable, Sendable {
         self.envelopeSpent = envelopeSpent
     }
 
-    public static let empty = GridCell()
+    public static let empty = CashFlowCell()
 }
 
 public enum RowKind: String, Hashable, Sendable {
     case item, envelope, income, setAside, other
 }
 
-public struct GridRow: Hashable, Sendable, Identifiable {
+public struct CashFlowRow: Hashable, Sendable, Identifiable {
     public var id: String
     public var title: String
     public var subtitle: String
@@ -50,14 +50,14 @@ public struct GridRow: Hashable, Sendable, Identifiable {
     public var sourceID: UUID?
     public var isInflow: Bool
     public var periodID: UUID?
-    public var cells: [GridCell]
+    public var cells: [CashFlowCell]
 
     public func hasValue(in range: Range<Int>) -> Bool {
         range.contains { cells.indices.contains($0) && cells[$0].status != .empty }
     }
 }
 
-public struct GridSection: Hashable, Sendable, Identifiable {
+public struct CashFlowSection: Hashable, Sendable, Identifiable {
     public enum Kind: String, Hashable, Sendable {
         case period, account, unassigned, oneOffs, setAsides, income, other
     }
@@ -66,13 +66,13 @@ public struct GridSection: Hashable, Sendable, Identifiable {
     public var title: String
     public var kind: Kind
     public var color: PeriodColor?
-    public var rows: [GridRow]
+    public var rows: [CashFlowRow]
     /// Only rows with something in the visible columns are shown (one-offs).
     public var hidesEmptyRows: Bool
 }
 
 /// The rows under the grid, like the sheet's Total / Cash / Net rows.
-public struct GridSummary: Hashable, Sendable {
+public struct CashFlowSummary: Hashable, Sendable {
     public var totalOut: [Money]
     public var totalIn: [Money]
     public var opening: [Money?]
@@ -96,8 +96,8 @@ public struct PeriodBand: Hashable, Sendable, Identifiable {
 public struct CashFlowGrid: Sendable {
     public var granularity: Granularity
     public var buckets: [Bucket]
-    public var sections: [GridSection]
-    public var summary: GridSummary
+    public var sections: [CashFlowSection]
+    public var summary: CashFlowSummary
     public var bands: [PeriodBand]
     public var currentBucket: Int?
 
@@ -112,7 +112,7 @@ public struct CashFlowGrid: Sendable {
         return nil
     }
 
-    public func row(_ id: String) -> GridRow? {
+    public func row(_ id: String) -> CashFlowRow? {
         for section in sections {
             if let row = section.rows.first(where: { $0.id == id }) { return row }
         }
@@ -145,10 +145,10 @@ public enum GridBuilder {
             overridden = Array(repeating: false, count: count)
         }
 
-        func cells() -> [GridCell] {
+        func cells() -> [CashFlowCell] {
             cents.indices.map { index in
                 if hasPlanned[index] {
-                    return GridCell(amount: Money(cents: cents[index]), status: .planned, keys: keys[index], isOverridden: overridden[index])
+                    return CashFlowCell(amount: Money(cents: cents[index]), status: .planned, keys: keys[index], isOverridden: overridden[index])
                 }
                 if let state = state[index] {
                     let status: CellStatus = switch state {
@@ -157,7 +157,7 @@ public enum GridBuilder {
                     case .paused: .paused
                     case .unpaid: .unpaid
                     }
-                    return GridCell(amount: nil, status: status, keys: keys[index], isOverridden: overridden[index])
+                    return CashFlowCell(amount: nil, status: status, keys: keys[index], isOverridden: overridden[index])
                 }
                 return .empty
             }
@@ -215,12 +215,12 @@ public enum GridBuilder {
         }
 
         let today = projection.today
-        func cells(_ rowID: String) -> [GridCell] {
+        func cells(_ rowID: String) -> [CashFlowCell] {
             accumulators[rowID]?.cells() ?? Array(repeating: .empty, count: buckets.count)
         }
-        func itemRow(_ item: BudgetItem) -> GridRow {
+        func itemRow(_ item: BudgetItem) -> CashFlowRow {
             let id = "item:\(item.id.uuidString)"
-            return GridRow(
+            return CashFlowRow(
                 id: id,
                 title: item.name,
                 subtitle: itemSubtitle(item, today: today),
@@ -234,12 +234,12 @@ public enum GridBuilder {
         let byOrder: (BudgetItem, BudgetItem) -> Bool = { ($0.sortIndex, $0.name) < ($1.sortIndex, $1.name) }
         let items = document.items.filter { !$0.archived }
 
-        var sections: [GridSection] = []
+        var sections: [CashFlowSection] = []
 
         for period in document.periods.sorted(by: { $0.span.start < $1.span.start }) {
             let rows = items.filter { $0.periodID == period.id }.sorted(by: byOrder).map(itemRow)
             guard !rows.isEmpty else { continue }
-            sections.append(GridSection(id: "period:\(period.id.uuidString)", title: period.name, kind: .period,
+            sections.append(CashFlowSection(id: "period:\(period.id.uuidString)", title: period.name, kind: .period,
                                         color: period.color, rows: rows, hidesEmptyRows: false))
         }
 
@@ -248,42 +248,42 @@ public enum GridBuilder {
         for account in document.sortedAccounts {
             let rows = regular.filter { $0.flow == .outflow && $0.accountID == account.id }.sorted(by: byOrder).map(itemRow)
             guard !rows.isEmpty else { continue }
-            sections.append(GridSection(id: "account:\(account.id.uuidString)", title: account.name, kind: .account,
+            sections.append(CashFlowSection(id: "account:\(account.id.uuidString)", title: account.name, kind: .account,
                                         color: nil, rows: rows, hidesEmptyRows: false))
         }
         let unassigned = regular.filter { $0.flow == .outflow && ($0.accountID.map { !knownAccounts.contains($0) } ?? true) }
         if !unassigned.isEmpty {
-            sections.append(GridSection(id: "unassigned", title: document.accounts.isEmpty ? "Spending" : "Other items",
+            sections.append(CashFlowSection(id: "unassigned", title: document.accounts.isEmpty ? "Spending" : "Other items",
                                         kind: .unassigned, color: nil, rows: unassigned.sorted(by: byOrder).map(itemRow), hidesEmptyRows: false))
         }
 
         let oneOffs = items.filter { $0.periodID == nil && $0.isOneOff }
         if !oneOffs.isEmpty {
             let rows = oneOffs.sorted { ($0.segments.first?.start ?? today, $0.name) < ($1.segments.first?.start ?? today, $1.name) }.map(itemRow)
-            sections.append(GridSection(id: "oneoffs", title: "One-offs", kind: .oneOffs, color: nil, rows: rows, hidesEmptyRows: true))
+            sections.append(CashFlowSection(id: "oneoffs", title: "One-offs", kind: .oneOffs, color: nil, rows: rows, hidesEmptyRows: true))
         }
 
-        var setAsideRows: [GridRow] = []
+        var setAsideRows: [CashFlowRow] = []
         for source in document.incomes where !source.archived {
             for (prefix, label) in [("tax", "Tax set-aside"), ("gst", "GST set-aside")] {
                 let id = "\(prefix):\(source.id.uuidString)"
                 guard accumulators[id] != nil else { continue }
-                setAsideRows.append(GridRow(id: id, title: label, subtitle: source.name, kind: .setAside, sourceID: source.id,
+                setAsideRows.append(CashFlowRow(id: id, title: label, subtitle: source.name, kind: .setAside, sourceID: source.id,
                                             isInflow: false, periodID: nil, cells: cells(id)))
             }
         }
         if !setAsideRows.isEmpty {
-            sections.append(GridSection(id: "setasides", title: "Set aside", kind: .setAsides, color: nil, rows: setAsideRows, hidesEmptyRows: false))
+            sections.append(CashFlowSection(id: "setasides", title: "Set aside", kind: .setAsides, color: nil, rows: setAsideRows, hidesEmptyRows: false))
         }
 
         var incomeRows = regular.filter { $0.flow == .inflow }.sorted(by: byOrder).map(itemRow)
         for source in document.incomes.filter({ !$0.archived }).sorted(by: { ($0.sortIndex, $0.name) < ($1.sortIndex, $1.name) }) {
             let id = "income:\(source.id.uuidString)"
-            incomeRows.append(GridRow(id: id, title: source.name, subtitle: incomeSubtitle(source, today: today), kind: .income,
+            incomeRows.append(CashFlowRow(id: id, title: source.name, subtitle: incomeSubtitle(source, today: today), kind: .income,
                                       sourceID: source.id, isInflow: true, periodID: nil, cells: cells(id)))
         }
         if !incomeRows.isEmpty {
-            sections.append(GridSection(id: "income", title: "Income", kind: .income, color: nil, rows: incomeRows, hidesEmptyRows: false))
+            sections.append(CashFlowSection(id: "income", title: "Income", kind: .income, color: nil, rows: incomeRows, hidesEmptyRows: false))
         }
 
         // Summary rows from the daily ledger.
@@ -309,7 +309,7 @@ public enum GridBuilder {
         }
 
         var bands: [PeriodBand] = []
-        let grid = CashFlowGrid(granularity: granularity, buckets: buckets, sections: [], summary: GridSummary(
+        let grid = CashFlowGrid(granularity: granularity, buckets: buckets, sections: [], summary: CashFlowSummary(
             totalOut: totalOut, totalIn: totalIn, opening: opening, closing: closing, checkpoint: checkpoint, lowest: lowest
         ), bands: [], currentBucket: buckets.first(where: \.containsToday)?.index)
         for period in document.periods.sorted(by: { $0.span.start < $1.span.start }) {
@@ -325,7 +325,7 @@ public enum GridBuilder {
         return result
     }
 
-    static func itemSubtitle(_ item: BudgetItem, today: LocalDate) -> String {
+    public static func itemSubtitle(_ item: BudgetItem, today: LocalDate) -> String {
         guard let segment = item.segment(covering: today) ?? item.segments.first(where: { $0.start > today }) ?? item.segments.last else {
             return ""
         }
@@ -339,7 +339,7 @@ public enum GridBuilder {
         return "\(segment.recurrence.label) · \(amount)"
     }
 
-    static func incomeSubtitle(_ source: IncomeSource, today: LocalDate) -> String {
+    public static func incomeSubtitle(_ source: IncomeSource, today: LocalDate) -> String {
         let frequency = source.paySchedule.rule.frequencyLabel
         guard let rate = source.rate(on: today) else { return "\(source.kind.label) · \(frequency)" }
         return "\(MoneyFormat.string(rate.amount, showCents: false)) \(rate.unit.label) · paid \(frequency.lowercased())"
