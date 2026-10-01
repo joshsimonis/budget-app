@@ -165,3 +165,19 @@ private func allDates(_ item: BudgetItem, _ span: DateSpan) -> [LocalDate] {
         #expect(SampleData.fixtureID(30).uuidString == "00000000-0000-4000-8000-00000000001E")
     }
 }
+
+@Suite struct DemoBankTests {
+    @Test func demoBankReconciles() {
+        let today = LocalDate(2026, 10, 1)
+        var document = SampleData.demo(today: today)
+        let bank = SampleData.demoBank(for: &document, today: today)
+        let projection = ProjectionEngine.run(document: document, today: today, bank: bank)
+        #expect(projection.mode == .bank)
+        #expect(projection.flows.contains { $0.status == .matched })
+        #expect(projection.flows.contains { $0.status == .missed })
+        #expect(!projection.unplanned.isEmpty)
+        #expect(projection.envelopes.contains { ($0.spend?.spent ?? .zero).isPositive })
+        let again = SampleData.demoBank(for: &document, today: today)
+        #expect(again == bank) // deterministic
+    }
+}

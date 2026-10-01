@@ -4,7 +4,7 @@ import Foundation
 import Observation
 
 enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
-    case cashFlow, items, income, periods, transactions
+    case cashFlow, items, income, periods, transactions, suggestions
 
     var id: String { rawValue }
 
@@ -15,6 +15,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .income: "Income"
         case .periods: "Periods"
         case .transactions: "Transactions"
+        case .suggestions: "Suggestions"
         }
     }
 
@@ -25,6 +26,7 @@ enum SidebarItem: String, CaseIterable, Identifiable, Hashable {
         case .income: "banknote"
         case .periods: "calendar.badge.clock"
         case .transactions: "creditcard"
+        case .suggestions: "sparkles"
         }
     }
 }
@@ -56,6 +58,10 @@ final class AppModel {
 
     /// Bank data from Up (nil until the first sync).
     private(set) var bank: BankCache?
+    private(set) var suggestions: [RecurringSuggestion] = []
+    private(set) var envelopeSuggestions: [EnvelopeSuggestion] = []
+    /// Launched with --demo: sample data, nothing touches your real budget.
+    var isDemo = false
     private(set) var syncStatus: SyncStatus = .idle
     private(set) var hasUpToken = false
     var syncNotes: [String] = []
@@ -145,6 +151,33 @@ final class AppModel {
         today = document.settings.timeZone.today()
         projection = ProjectionEngine.run(document: document, today: today, bank: bank)
         rebuildGrid()
+        if let bank {
+            let zone = document.settings.timeZone
+            suggestions = RecurringDetector.suggestions(bank: bank, document: document, today: today, timeZone: zone)
+            envelopeSuggestions = RecurringDetector.envelopeSuggestions(bank: bank, document: document, today: today, timeZone: zone)
+        } else {
+            suggestions = []
+            envelopeSuggestions = []
+        }
+    }
+
+    /// The model for this launch. `--demo` opens sample data (with made-up bank activity)
+    /// in a scratch folder; `--sidebar=income` and `--granularity=month` pick the first screen.
+    static func makeForLaunch(arguments: [String] = ProcessInfo.processInfo.arguments) -> AppModel {
+        func value(_ name: String) -> String? {
+            arguments.first { $0.hasPrefix(name + "=") }.map { String($0.dropFirst(name.count + 1)) }
+        }
+        guard arguments.contains("--demo") else { return AppModel() }
+        let today = TimeZoneBridge().today()
+        var document = SampleData.demo(today: today)
+        let bank = SampleData.demoBank(for: &document, today: today)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("budget-demo-\(UUID().uuidString)")
+        let model = AppModel(store: DocumentStore(directory: directory), document: document, tokenStore: .memory())
+        model.isDemo = true
+        model.setBank(bank)
+        if let sidebar = value("--sidebar").flatMap(SidebarItem.init(rawValue:)) { model.sidebar = sidebar }
+        if let granularity = value("--granularity").flatMap(Granularity.init(rawValue:)) { model.granularity = granularity }
+        return model
     }
 
     /// Replaces the bank cache (after a sync or disconnect) and recomputes.

@@ -4,7 +4,7 @@ import SwiftUI
 
 /// All of the app's scenes. `BudgetApp` (the executable) only hosts these.
 public struct BudgetScenes: Scene {
-    @State private var model = AppModel()
+    @State private var model = AppModel.makeForLaunch()
 
     public init() {}
 
@@ -104,6 +104,7 @@ struct RootView: View {
             List(selection: $model.sidebar) {
                 ForEach(SidebarItem.allCases) { item in
                     Label(item.title, systemImage: item.symbol)
+                        .badge(item == .suggestions ? model.suggestions.count : 0)
                         .tag(item)
                 }
             }
@@ -118,9 +119,11 @@ struct RootView: View {
                 case .income: IncomeListView()
                 case .periods: PeriodsListView()
                 case .transactions: TransactionsView()
+                case .suggestions: SuggestionsView()
                 }
             }
         }
+        .navigationSubtitle(model.isDemo ? "Demo data" : "")
         .sheet(item: $model.presentedItemDraft) { draft in
             ItemEditorSheet(draft: draft)
         }

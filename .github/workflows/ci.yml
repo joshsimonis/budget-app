@@ -59,3 +59,41 @@ jobs:
           name: Budget-app
           path: build/Budget.zip
           retention-days: 30
+
+  screenshots:
+    name: Demo screenshots (macOS)
+    runs-on: macos-15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Build Budget.app (Apple Silicon)
+        run: ARCHS=arm64 scripts/build-app.sh
+      - name: Launch the demo and capture the screen
+        run: |
+          mkdir -p build/screens
+          capture() {
+            open -n build/Budget.app --args --demo "--sidebar=$1" "--granularity=$2"
+            sleep 8
+            screencapture -x "build/screens/$1-$2.png" || true
+            pkill -x Budget || true
+            sleep 2
+          }
+          capture cashFlow week
+          capture income week
+          ls -la build/screens
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: build/screens
+          retention-days: 14
+      - name: Print screenshots (base64 JPEG)
+        run: |
+          for f in build/screens/*.png; do
+            sips -Z 1200 -s format jpeg -s formatOptions 35 "$f" --out "${f%.png}.jpg" >/dev/null
+            echo "SCREENSHOT-BEGIN $(basename "${f%.png}")"
+            base64 -i "${f%.png}.jpg" | fold -w 900 | sed 's/^/SHOT /'
+            echo "SCREENSHOT-END"
+          done

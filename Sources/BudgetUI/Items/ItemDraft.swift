@@ -83,9 +83,9 @@ struct ItemDraft: Identifiable {
         notes = ""
     }
 
-    init(item: BudgetItem, today: LocalDate) {
+    init(item: BudgetItem, today: LocalDate, isNew: Bool = false) {
         id = item.id
-        isNew = false
+        self.isNew = isNew
         working = item
         let current = item.segment(covering: today) ?? item.segments.first { $0.start > today } ?? item.segments.last
         currentSegmentID = current?.id

@@ -188,3 +188,76 @@ public enum SampleData {
         )
     }
 }
+
+extension SampleData {
+    /// Synthetic Up data for the demo budget: each planned item paid (with small, deterministic
+    /// variations) over the last few weeks, some grocery and eating-out spending, a couple of
+    /// unplanned purchases, and account balances. Links the demo accounts to the fake Up accounts.
+    public static func demoBank(for document: inout BudgetDocument, today: LocalDate, timeZone: TimeZoneBridge = TimeZoneBridge()) -> BankCache {
+        let upIDs = ["demo-bills", "demo-spending"]
+        for (index, id) in upIDs.enumerated() where index < document.accounts.count {
+            document.accounts[index].upAccountID = id
+        }
+        let upByAccount = Dictionary(uniqueKeysWithValues: document.accounts.compactMap { account in account.upAccountID.map { (account.id, $0) } })
+        var seed: UInt64 = 42
+        func random(_ range: Int) -> Int {
+            seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Int((seed >> 33) % UInt64(max(1, range)))
+        }
+        func instant(_ date: LocalDate, hour: Int) -> Date {
+            timeZone.startOfDay(date).addingTimeInterval(Double(hour * 3600 + random(3000)))
+        }
+
+        let history = DateSpan(start: today.adding(days: -56), end: today.adding(days: -1))
+        let projection = ProjectionEngine.run(document: document, today: today, horizon: history)
+        var transactions: [BankTransaction] = []
+        var counter = 0
+        func add(_ date: LocalDate, _ cents: Int64, _ description: String, account: String, category: String? = nil, hour: Int = 10) {
+            counter += 1
+            transactions.append(BankTransaction(
+                id: "demo-\(counter)", accountID: account, status: date >= today.adding(days: -1) ? .held : .settled,
+                createdAt: instant(date, hour: hour), description: description, amount: Money(cents: cents), categoryID: category
+            ))
+        }
+
+        for flow in projection.flows where flow.state == .planned && flow.kind == .item {
+            guard let item = document.item(flow.key.sourceID) else { continue }
+            // Leave one recent bill unpaid so the demo shows a missed item.
+            if item.name == "Internet" && flow.date > today.adding(days: -20) { continue }
+            let account = flow.accountID.flatMap { upByAccount[$0] } ?? upIDs[1]
+            let label = item.match?.patterns.first.map { $0.capitalized + " " + item.name } ?? item.name
+            let shift = random(3) - 1
+            add(flow.date.adding(days: shift), flow.amount.cents, label, account: account)
+        }
+        for flow in projection.flows where flow.state == .planned && flow.kind == .pay {
+            let source = document.income(flow.key.sourceID)
+            let label = (source?.match?.patterns.first ?? source?.name ?? "Pay").capitalized
+            add(flow.date, flow.amount.cents, "Salary \(label)", account: upIDs[1], hour: 6)
+        }
+        var day = history.start
+        while day <= history.end {
+            if random(3) > 0 { add(day, -Int64(1500 + random(6500)), ["Fresh Grocer", "Corner Market", "Big Supermarket"][random(3)], account: upIDs[1], category: "groceries", hour: 17) }
+            if random(4) == 0 { add(day, -Int64(1800 + random(4500)), ["Noodle Bar", "Cafe Nine", "Pizza Place"][random(3)], account: upIDs[1], category: "restaurants-and-cafes", hour: 19) }
+            day = day.adding(days: 1)
+        }
+        add(today.adding(days: -9), -12_900, "Hardware Store", account: upIDs[1], category: "home-maintenance-and-improvements", hour: 11)
+        add(today.adding(days: -3), -4_550, "Bookshop", account: upIDs[1], category: "hobbies", hour: 13)
+
+        return BankCache(
+            accounts: [
+                BankAccount(id: upIDs[0], name: "Bills", accountType: "SAVER", ownershipType: "INDIVIDUAL", balance: .dollars(2_150)),
+                BankAccount(id: upIDs[1], name: "Spending", accountType: "TRANSACTIONAL", ownershipType: "INDIVIDUAL", balance: Money(cents: 184_250)),
+            ],
+            transactions: transactions.sorted { ($0.createdAt, $0.id) < ($1.createdAt, $1.id) },
+            categories: [
+                BankCategory(id: "home", name: "Home"), BankCategory(id: "groceries", name: "Groceries", parentID: "home"),
+                BankCategory(id: "home-maintenance-and-improvements", name: "Maintenance & Improvements", parentID: "home"),
+                BankCategory(id: "good-life", name: "Good Life"), BankCategory(id: "restaurants-and-cafes", name: "Restaurants & Cafes", parentID: "good-life"),
+                BankCategory(id: "takeaway", name: "Takeaway", parentID: "good-life"), BankCategory(id: "hobbies", name: "Hobbies", parentID: "good-life"),
+            ],
+            coverageStart: timeZone.startOfDay(today.adding(months: -13)),
+            lastSync: timeZone.startOfDay(today).addingTimeInterval(9 * 3600),
+            categoriesFetchedAt: timeZone.startOfDay(today)
+        )
+    }
+}

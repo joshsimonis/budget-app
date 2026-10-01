@@ -13,6 +13,7 @@ enum GridMetrics {
 struct CashFlowGridView: View {
     @Environment(AppModel.self) private var model
     @FocusState private var focused: Bool
+    @State private var pager = HorizontalScrollPager()
 
     var body: some View {
         GeometryReader { geometry in
@@ -55,7 +56,14 @@ struct CashFlowGridView: View {
                 model.move(by: 1)
                 return .handled
             }
-            .onAppear { model.visibleColumns = columns }
+            .onAppear {
+                model.visibleColumns = columns
+                let model = model
+                pager.start { step in
+                    MainActor.assumeIsolated { model.move(by: step) }
+                }
+            }
+            .onDisappear { pager.stop() }
             .onChange(of: columns) { _, newValue in model.visibleColumns = newValue }
         }
     }
