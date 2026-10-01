@@ -242,3 +242,43 @@ fileprivate struct BankScenario {
         #expect(result.flows[OccurrenceKey(sourceID: tax.id, originalDate: d(2026, 10, 12))]?.status == .missed)
     }
 }
+
+@Suite struct ProjectionPerformanceTests {
+    @Test func largeHistoryStaysFast() {
+        let today = d(2026, 10, 1)
+        var document = SampleData.demo(today: today)
+        // Forty more bills with matching text.
+        for n in 0..<40 {
+            document.items.append(BudgetItem(
+                name: "Bill \(n)",
+                accountID: document.accounts[0].id,
+                segments: [ScheduleSegment(start: d(2025, 1, 1), recurrence: Recurrence(n % 2 == 0 ? .monthly : .weekly, anchor: d(2025, 1, 1 + n % 28)),
+                                           amount: Money(cents: Int64(1000 + n * 37)))],
+                match: MatchRule(patterns: ["bill \(n)"])
+            ))
+        }
+        var bank = SampleData.demoBank(for: &document, today: today)
+        // About 4,000 extra transactions over 13 months.
+        let zone = TimeZoneBridge()
+        var extra: [BankTransaction] = []
+        var day = today.adding(months: -13)
+        var n = 0
+        while day < today {
+            for k in 0..<10 {
+                extra.append(BankTransaction(id: "x\(n)", accountID: "demo-spending", status: .settled,
+                                             createdAt: zone.startOfDay(day).addingTimeInterval(Double(3600 * (8 + k))),
+                                             description: "Shop \(k)", amount: Money(cents: -Int64(500 + k * 120)), categoryID: k % 3 == 0 ? "groceries" : nil))
+                n += 1
+            }
+            day = day.adding(days: 1)
+        }
+        bank.transactions = (bank.transactions + extra).sorted { $0.createdAt < $1.createdAt }
+        let clock = ContinuousClock()
+        let elapsed = clock.measure {
+            let projection = ProjectionEngine.run(document: document, today: today, bank: bank)
+            _ = GridBuilder.build(projection, document: document, granularity: .day)
+            _ = RecurringDetector.suggestions(bank: bank, document: document, today: today, timeZone: zone)
+        }
+        #expect(elapsed < .seconds(5), "took \(elapsed)")
+    }
+}

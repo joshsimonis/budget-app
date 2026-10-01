@@ -135,6 +135,17 @@ public enum Reconciler {
                                                   uniquingKeysWith: { first, _ in first })
         var candidates: [Candidate] = []
         let sortedTransactions = transactions.sorted { ($0.date, $0.transaction.createdAt, $0.transaction.id) < ($1.date, $1.transaction.createdAt, $1.transaction.id) }
+        let sortedDays = sortedTransactions.map(\.date.dayNumber)
+        /// Index of the first transaction on or after `date`.
+        func firstIndex(onOrAfter date: LocalDate) -> Int {
+            var low = 0
+            var high = sortedDays.count
+            while low < high {
+                let mid = (low + high) / 2
+                if sortedDays[mid] < date.dayNumber { low = mid + 1 } else { high = mid }
+            }
+            return low
+        }
         for flow in planned where result.flows[flow.key] == nil {
             guard let rule = matchRule(for: flow, in: document), !rule.isEmpty else { continue }
             if let coverage = options.coverageStart, flow.date < coverage { continue }
@@ -143,7 +154,10 @@ public enum Reconciler {
             let high = flow.date.adding(days: after)
             let plannedCents = flow.plannedAmount.magnitude.cents
             guard plannedCents > 0 else { continue }
-            for dated in sortedTransactions where dated.date >= low && dated.date <= high {
+            var index = firstIndex(onOrAfter: low)
+            while index < sortedTransactions.count, sortedTransactions[index].date <= high {
+                let dated = sortedTransactions[index]
+                index += 1
                 let txn = dated.transaction
                 guard !used.contains(txn.id), !ignored.contains(txn.id), !txn.amount.isZero,
                       txn.amount.isPositive == flow.plannedAmount.isPositive else { continue }
