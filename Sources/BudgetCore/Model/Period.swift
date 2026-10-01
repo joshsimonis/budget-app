@@ -57,6 +57,14 @@ public struct BalanceCheckpoint: Identifiable, Hashable, Codable, Sendable {
 public struct OccurrenceKey: Hashable, Codable, Sendable, Comparable, CustomStringConvertible {
     public enum Part: String, Codable, Sendable, CaseIterable {
         case main, taxSetAside, gstSetAside
+
+        var sortOrder: Int {
+            switch self {
+            case .main: 0
+            case .taxSetAside: 1
+            case .gstSetAside: 2
+            }
+        }
     }
 
     public var sourceID: UUID
@@ -72,7 +80,7 @@ public struct OccurrenceKey: Hashable, Codable, Sendable, Comparable, CustomStri
     public static func < (lhs: OccurrenceKey, rhs: OccurrenceKey) -> Bool {
         if lhs.originalDate != rhs.originalDate { return lhs.originalDate < rhs.originalDate }
         if lhs.sourceID != rhs.sourceID { return lhs.sourceID.uuidString < rhs.sourceID.uuidString }
-        return lhs.part.rawValue < rhs.part.rawValue
+        return lhs.part.sortOrder < rhs.part.sortOrder
     }
 
     public var description: String { "\(sourceID.uuidString.prefix(8))@\(originalDate)/\(part.rawValue)" }
