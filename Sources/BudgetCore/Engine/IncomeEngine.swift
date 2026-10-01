@@ -331,7 +331,8 @@ public enum IncomeEngine {
             accountID: source.accountID,
             state: event.state,
             isOverridden: event.netOverride != nil || event.daysOverridden || event.isMoved,
-            periodID: nil
+            periodID: nil,
+            reconciliation: nil
         )]
         guard event.state == .planned else { return flows }
         if event.breakdown.taxSetAside.isPositive {
@@ -345,7 +346,8 @@ public enum IncomeEngine {
                 accountID: source.accountID,
                 state: .planned,
                 isOverridden: false,
-                periodID: nil
+                periodID: nil,
+                reconciliation: nil
             ))
         }
         if event.breakdown.gstSetAside.isPositive {
@@ -359,7 +361,8 @@ public enum IncomeEngine {
                 accountID: source.accountID,
                 state: .planned,
                 isOverridden: false,
-                periodID: nil
+                periodID: nil,
+                reconciliation: nil
             ))
         }
         return flows

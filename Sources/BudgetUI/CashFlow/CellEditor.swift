@@ -21,6 +21,9 @@ struct CellEditor: View {
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    if current.kind == .other {
+                        UnplannedTransactionsEditor(bucket: bucket, isInflow: current.isInflow)
+                    }
                     ForEach(keys, id: \.self) { key in
                         editor(for: key, kind: current.kind)
                         if key != keys.last { Divider() }
@@ -40,6 +43,7 @@ struct CellEditor: View {
         case .item:
             if let flow = model.projection.flow(key), let item = model.item(key.sourceID) {
                 ItemOccurrenceEditor(item: item, flow: flow)
+                ReconciliationSection(flow: flow)
             }
         case .envelope:
             if let period = model.projection.envelope(key), let item = model.item(key.sourceID) {
@@ -48,6 +52,9 @@ struct CellEditor: View {
         case .income:
             if let event = model.projection.payEvent(key), let source = model.income(key.sourceID) {
                 PayEventEditor(source: source, event: event)
+                if let flow = model.projection.flow(key) {
+                    ReconciliationSection(flow: flow)
+                }
             }
         case .setAside:
             if let flow = model.projection.flow(key) {
@@ -204,6 +211,24 @@ struct EnvelopePeriodEditor: View {
                 Text("\(Format.money(period.budget)) after days paused by a period")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            }
+            if let spend = period.spend {
+                let left = period.budget - spend.spent
+                VStack(alignment: .leading, spacing: 4) {
+                    ProgressView(value: min(1, max(0, Double(spend.spent.cents) / Double(max(1, period.budget.cents)))))
+                        .tint(left.isNegative ? .red : .accentColor)
+                    Text(left.isNegative
+                         ? "Spent \(Format.money(spend.spent)), \(Format.money(-left)) over budget"
+                         : "Spent \(Format.money(spend.spent)), \(Format.money(left)) left")
+                        .font(.callout)
+                        .foregroundStyle(left.isNegative ? .red : .primary)
+                    ForEach(spend.transactionIDs.suffix(8), id: \.self) { id in
+                        if let transaction = model.bank?.transaction(id) {
+                            TransactionLine(transaction: transaction)
+                                .font(.caption)
+                        }
+                    }
+                }
             }
             HStack {
                 Text("Budget")

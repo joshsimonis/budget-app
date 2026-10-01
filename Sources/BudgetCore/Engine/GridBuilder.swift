@@ -15,6 +15,25 @@ public enum CellStatus: String, Hashable, Sendable {
     case missed
     /// Real bank data with nothing planned (e.g. unplanned spending).
     case actual
+    /// In the past and not set up for matching: assumed to have happened.
+    case assumed
+}
+
+extension CellStatus {
+    /// When a cell holds several occurrences, the one that needs the most attention wins.
+    var priority: Int {
+        switch self {
+        case .missed: 8
+        case .pending: 7
+        case .planned: 6
+        case .matched: 5
+        case .actual: 4
+        case .assumed: 3
+        case .unpaid: 2
+        case .skipped, .paused: 1
+        case .empty: 0
+        }
+    }
 }
 
 public struct CashFlowCell: Hashable, Sendable {
@@ -40,6 +59,12 @@ public struct CashFlowCell: Hashable, Sendable {
 
 public enum RowKind: String, Hashable, Sendable {
     case item, envelope, income, setAside, other
+}
+
+/// Row ids for unplanned bank transactions.
+public enum UnplannedRow {
+    public static let spending = "other:out"
+    public static let income = "other:in"
 }
 
 public struct CashFlowRow: Hashable, Sendable, Identifiable {
@@ -132,34 +157,43 @@ public enum GridBuilder {
 
     private struct Accumulator {
         var cents: [Int64]
-        var hasPlanned: [Bool]
-        var state: [FlowState?]
+        var hasAmount: [Bool]
+        var status: [CellStatus]
         var keys: [[OccurrenceKey]]
         var overridden: [Bool]
+        var envelopeSpent: [Int64?]
 
         init(count: Int) {
             cents = Array(repeating: 0, count: count)
-            hasPlanned = Array(repeating: false, count: count)
-            state = Array(repeating: nil, count: count)
+            hasAmount = Array(repeating: false, count: count)
+            status = Array(repeating: .empty, count: count)
             keys = Array(repeating: [], count: count)
             overridden = Array(repeating: false, count: count)
+            envelopeSpent = Array(repeating: nil, count: count)
+        }
+
+        mutating func note(_ newStatus: CellStatus, at index: Int) {
+            if newStatus.priority > status[index].priority { status[index] = newStatus }
+        }
+
+        mutating func add(_ amount: Money, status newStatus: CellStatus, at index: Int) {
+            cents[index] += amount.cents
+            hasAmount[index] = true
+            note(newStatus, at: index)
         }
 
         func cells() -> [CashFlowCell] {
             cents.indices.map { index in
-                if hasPlanned[index] {
-                    return CashFlowCell(amount: Money(cents: cents[index]), status: .planned, keys: keys[index], isOverridden: overridden[index])
-                }
-                if let state = state[index] {
-                    let status: CellStatus = switch state {
-                    case .planned: .planned
-                    case .skipped: .skipped
-                    case .paused: .paused
-                    case .unpaid: .unpaid
-                    }
-                    return CashFlowCell(amount: nil, status: status, keys: keys[index], isOverridden: overridden[index])
-                }
-                return .empty
+                let status = status[index]
+                guard status != .empty else { return .empty }
+                let showsAmount = hasAmount[index] && ![.skipped, .paused, .unpaid].contains(status)
+                return CashFlowCell(
+                    amount: showsAmount ? Money(cents: cents[index]) : nil,
+                    status: status,
+                    keys: keys[index],
+                    isOverridden: overridden[index],
+                    envelopeSpent: envelopeSpent[index].map { Money(cents: $0) }
+                )
             }
         }
     }
@@ -183,13 +217,38 @@ public enum GridBuilder {
         }
 
         for flow in projection.flows {
-            guard let b = bucket(of: flow.date) else { continue }
+            var date = flow.date
+            var amount = flow.amount.magnitude
+            var status: CellStatus
+            switch flow.state {
+            case .skipped: status = .skipped
+            case .paused: status = .paused
+            case .unpaid: status = .unpaid
+            case .planned:
+                switch flow.status {
+                case .matched?:
+                    status = .matched
+                    date = flow.reconciliation?.actualDate ?? flow.date
+                    amount = (flow.reconciliation?.actualAmount ?? flow.amount).magnitude
+                case .markedPaid?:
+                    status = .matched
+                case .pending?:
+                    status = .pending
+                    date = max(projection.today, flow.date)
+                case .missed?:
+                    status = .missed
+                case .assumed?:
+                    status = .assumed
+                case .upcoming?, nil:
+                    status = .planned
+                }
+            }
+            guard let b = bucket(of: date) else { continue }
             add(rowID(for: flow.key, kind: flow.kind)) { acc in
-                if flow.state == .planned {
-                    acc.cents[b] += flow.amount.magnitude.cents
-                    acc.hasPlanned[b] = true
-                } else if acc.state[b] == nil {
-                    acc.state[b] = flow.state
+                if [.skipped, .paused, .unpaid].contains(status) {
+                    acc.note(status, at: b)
+                } else {
+                    acc.add(amount, status: status, at: b)
                 }
                 acc.keys[b].append(flow.key)
                 if flow.isOverridden { acc.overridden[b] = true }
@@ -201,16 +260,32 @@ public enum GridBuilder {
             add(rowID) { acc in
                 for allocation in envelope.allocations {
                     guard let b = bucket(of: allocation.date) else { continue }
-                    acc.cents[b] += allocation.amount.cents
-                    acc.hasPlanned[b] = true
+                    acc.add(allocation.amount, status: .planned, at: b)
+                }
+                for spent in envelope.spend?.daily ?? [] {
+                    guard let b = bucket(of: spent.date) else { continue }
+                    acc.add(spent.amount, status: .actual, at: b)
+                    acc.envelopeSpent[b] = (acc.envelopeSpent[b] ?? 0) + spent.amount.cents
                 }
                 guard let visible = envelope.span.intersection(horizon),
                       let first = bucket(of: visible.start), let last = bucket(of: visible.end) else { return }
                 for b in first...last {
                     acc.keys[b].append(envelope.key)
                     if envelope.isOverridden { acc.overridden[b] = true }
-                    if envelope.state != .planned && acc.state[b] == nil { acc.state[b] = envelope.state }
+                    switch envelope.state {
+                    case .skipped: acc.note(.skipped, at: b)
+                    case .paused: acc.note(.paused, at: b)
+                    default: break
+                    }
                 }
+            }
+        }
+
+        for dated in projection.unplanned {
+            guard let b = bucket(of: dated.date) else { continue }
+            let amount = dated.transaction.balanceDelta
+            add(amount.isPositive ? UnplannedRow.income : UnplannedRow.spending) { acc in
+                acc.add(amount.magnitude, status: .actual, at: b)
             }
         }
 
@@ -274,6 +349,19 @@ public enum GridBuilder {
         }
         if !setAsideRows.isEmpty {
             sections.append(CashFlowSection(id: "setasides", title: "Set aside", kind: .setAsides, color: nil, rows: setAsideRows, hidesEmptyRows: false))
+        }
+
+        var unplannedRows: [CashFlowRow] = []
+        if accumulators[UnplannedRow.spending] != nil {
+            unplannedRows.append(CashFlowRow(id: UnplannedRow.spending, title: "Other spending", subtitle: "From Up, not in your plan",
+                                             kind: .other, sourceID: nil, isInflow: false, periodID: nil, cells: cells(UnplannedRow.spending)))
+        }
+        if accumulators[UnplannedRow.income] != nil {
+            unplannedRows.append(CashFlowRow(id: UnplannedRow.income, title: "Other money in", subtitle: "From Up, not in your plan",
+                                             kind: .other, sourceID: nil, isInflow: true, periodID: nil, cells: cells(UnplannedRow.income)))
+        }
+        if !unplannedRows.isEmpty {
+            sections.append(CashFlowSection(id: "unplanned", title: "Not in your plan", kind: .other, color: nil, rows: unplannedRows, hidesEmptyRows: false))
         }
 
         var incomeRows = regular.filter { $0.flow == .inflow }.sorted(by: byOrder).map(itemRow)

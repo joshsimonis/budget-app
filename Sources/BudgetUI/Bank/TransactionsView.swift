@@ -41,6 +41,16 @@ struct TransactionsView: View {
                         Text(row.categoryName).foregroundStyle(.secondary)
                     }
                     .width(min: 80, ideal: 130)
+                    TableColumn("In your plan") { row in
+                        if let key = model.projection.assignments[row.id] {
+                            Label(model.describe(key), systemImage: "checkmark.circle").foregroundStyle(.green)
+                        } else if model.document.reconciliation.ignoredTransactionIDs.contains(row.id) {
+                            Text("Ignored").foregroundStyle(.tertiary)
+                        } else {
+                            Text("")
+                        }
+                    }
+                    .width(min: 100, ideal: 170)
                     TableColumn("Amount") { row in
                         Text(Format.signed(row.transaction.amount))
                             .monospacedDigit()

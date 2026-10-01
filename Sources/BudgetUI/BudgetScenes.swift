@@ -121,6 +121,9 @@ struct RootView: View {
                 }
             }
         }
+        .sheet(item: $model.presentedItemDraft) { draft in
+            ItemEditorSheet(draft: draft)
+        }
         .alert("Something went wrong", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }

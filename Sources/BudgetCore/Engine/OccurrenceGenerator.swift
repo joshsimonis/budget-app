@@ -51,7 +51,8 @@ public enum OccurrenceGenerator {
                 accountID: item.accountID,
                 state: state,
                 isOverridden: override != nil,
-                periodID: item.periodID
+                periodID: item.periodID,
+                reconciliation: nil
             ))
         }
         return result.sorted { ($0.date, $0.key) < ($1.date, $1.key) }
@@ -73,9 +74,17 @@ public struct EnvelopePeriod: Hashable, Sendable, Identifiable {
     public var state: FlowState
     public var isOverridden: Bool
     /// The budget spread over the active days (exact cents; earlier days get leftover cents).
+    /// With bank data, only what's left of the budget from today on.
     public var allocations: [DayAmount]
+    /// With bank data: what was actually spent so far, and on which days.
+    public var spend: EnvelopeSpend?
 
     public var id: OccurrenceKey { key }
+
+    /// Budget minus actual spending (never below zero).
+    public var remaining: Money? {
+        spend.map { max(.zero, budget - $0.spent) }
+    }
 }
 
 public struct DayAmount: Hashable, Sendable {
@@ -157,7 +166,8 @@ public enum EnvelopeAllocator {
                     fullBudget: periodBudget,
                     state: state,
                     isOverridden: override != nil,
-                    allocations: allocations.filter { context.horizon.contains($0.date) }
+                    allocations: allocations.filter { context.horizon.contains($0.date) },
+                    spend: nil
                 ))
             }
         }

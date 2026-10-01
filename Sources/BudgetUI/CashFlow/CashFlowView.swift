@@ -73,10 +73,17 @@ struct SummaryStrip: View {
         let nextPay = projection.payEvents.first { $0.payDate >= projection.today && $0.state == .planned }
         let estimate = projection.estimates.first { $0.year == projection.today.financialYear }
         HStack(spacing: 10) {
+            if let bankBalance = projection.bankBalance {
+                StatTile(
+                    title: "In Up now",
+                    value: Format.money(bankBalance),
+                    detail: model.syncStatus == .syncing ? "Syncing…" : syncDetail
+                )
+            }
             StatTile(
                 title: "Balance today",
                 value: today?.closing.map(Format.money) ?? "Not set",
-                detail: today?.closing == nil ? "Set a balance in the grid" : "After today's planned items"
+                detail: today?.closing == nil ? "Set a balance in the grid" : "After what's still due today"
             )
             if let low = projection.lowestUpcoming, let amount = low.closing {
                 StatTile(
@@ -109,6 +116,13 @@ struct SummaryStrip: View {
                     .frame(maxWidth: 320, alignment: .trailing)
             }
         }
+    }
+
+    private var syncDetail: String {
+        if case .failed = model.syncStatus { return "Last sync failed" }
+        guard let last = model.bank?.lastSync else { return "" }
+        let minutes = Int(Date().timeIntervalSince(last) / 60)
+        return minutes < 1 ? "Synced just now" : (minutes < 60 ? "Synced \(minutes) min ago" : "Synced \(LocalDate(chartDate: last).dayMonth())")
     }
 
     private func isLow(_ amount: Money) -> Bool {

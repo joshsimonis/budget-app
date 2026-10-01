@@ -51,6 +51,8 @@ final class AppModel {
     var errorMessage: String?
     /// Set by the File menu; the Bills & Spending list opens the editor for it.
     var pendingNewItem: ItemKind?
+    /// An item editor to show over the main window (e.g. "make this a regular item").
+    var presentedItemDraft: ItemDraft?
 
     /// Bank data from Up (nil until the first sync).
     private(set) var bank: BankCache?

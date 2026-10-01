@@ -171,3 +171,69 @@ extension AppModel {
         }
     }
 }
+
+// MARK: Reconciliation
+
+extension AppModel {
+    /// Links bank transactions to a planned occurrence by hand.
+    func link(_ transactionIDs: [String], to key: OccurrenceKey, undoManager: UndoManager?) {
+        perform("Link Transaction", undoManager: undoManager) { doc in
+            doc.reconciliation.manualLinks.removeAll { $0.occurrence == key }
+            for index in doc.reconciliation.manualLinks.indices {
+                doc.reconciliation.manualLinks[index].transactionIDs.removeAll { transactionIDs.contains($0) }
+            }
+            doc.reconciliation.manualLinks.removeAll { $0.transactionIDs.isEmpty }
+            doc.reconciliation.manualLinks.append(ManualLink(occurrence: key, transactionIDs: transactionIDs))
+            doc.reconciliation.markedPaid.removeAll { $0 == key }
+            doc.reconciliation.ignoredTransactionIDs.removeAll { transactionIDs.contains($0) }
+        }
+    }
+
+    /// Removes a match. A manual link is deleted; an automatic one is undone by ignoring the transaction.
+    func unlink(_ key: OccurrenceKey, undoManager: UndoManager?) {
+        let reconciliation = projection.flow(key)?.reconciliation
+        perform("Unlink Transaction", undoManager: undoManager) { doc in
+            if doc.reconciliation.manualLinks.contains(where: { $0.occurrence == key }) {
+                doc.reconciliation.manualLinks.removeAll { $0.occurrence == key }
+            } else if let ids = reconciliation?.transactionIDs {
+                for id in ids where !doc.reconciliation.ignoredTransactionIDs.contains(id) {
+                    doc.reconciliation.ignoredTransactionIDs.append(id)
+                }
+            }
+            doc.reconciliation.markedPaid.removeAll { $0 == key }
+        }
+    }
+
+    func setMarkedPaid(_ paid: Bool, key: OccurrenceKey, undoManager: UndoManager?) {
+        perform(paid ? "Mark as Paid" : "Mark as Unpaid", undoManager: undoManager) { doc in
+            doc.reconciliation.markedPaid.removeAll { $0 == key }
+            if paid { doc.reconciliation.markedPaid.append(key) }
+        }
+    }
+
+    func setIgnored(_ ignored: Bool, transactionID: String, undoManager: UndoManager?) {
+        perform(ignored ? "Ignore Transaction" : "Stop Ignoring Transaction", undoManager: undoManager) { doc in
+            doc.reconciliation.ignoredTransactionIDs.removeAll { $0 == transactionID }
+            if ignored { doc.reconciliation.ignoredTransactionIDs.append(transactionID) }
+        }
+    }
+
+    /// Bank transactions near an occurrence that could be linked to it.
+    func linkCandidates(for flow: PlannedFlow) -> [DatedTransaction] {
+        guard let bank else { return [] }
+        let zone = document.settings.timeZone
+        let included = Set(document.accounts.filter(\.includedInTotal).compactMap(\.upAccountID))
+        let low = flow.date.adding(days: -14)
+        let high = flow.date.adding(days: 14)
+        return bank.transactions
+            .filter { included.contains($0.accountID) && $0.amount.isPositive == flow.plannedAmount.isPositive }
+            .map { DatedTransaction(transaction: $0, date: zone.localDate(for: $0.createdAt)) }
+            .filter { $0.date >= low && $0.date <= high }
+            .sorted { abs($0.date - flow.date) < abs($1.date - flow.date) }
+    }
+
+    func describe(_ key: OccurrenceKey) -> String {
+        let name = document.sourceName(key.sourceID) ?? "Item"
+        return "\(name), \(key.originalDate.dayMonth())"
+    }
+}

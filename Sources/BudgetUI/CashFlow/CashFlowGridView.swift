@@ -205,7 +205,7 @@ struct GridCellView: View {
     var body: some View {
         let cell = row.cells[index]
         Button {
-            if !cell.keys.isEmpty { editing = true }
+            if !cell.keys.isEmpty || (row.kind == .other && cell.status != .empty) { editing = true }
         } label: {
             CellContent(cell: cell, isInflow: row.isInflow)
                 .padding(.trailing, 8)
@@ -232,6 +232,8 @@ struct CellContent: View {
             case .planned:
                 amountText(color: isInflow ? .green : .primary)
             case .actual:
+                amountText(color: .secondary)
+            case .assumed:
                 amountText(color: .secondary)
             case .matched:
                 Image(systemName: "checkmark.circle.fill")
@@ -291,10 +293,13 @@ struct SummaryFooter: View {
                 Text(summary.totalIn[index].isZero ? "" : Format.money(summary.totalIn[index]))
                     .foregroundStyle(.green)
             }
-            footerRow("Bank balance", subtitle: "Click to enter a balance", range: range) { index in
-                CheckpointCell(index: index)
+            if model.projection.mode == .manual {
+                footerRow("Bank balance", subtitle: "Click to enter a balance", range: range) { index in
+                    CheckpointCell(index: index)
+                }
             }
-            footerRow("Running balance", bold: true, range: range) { index in
+            footerRow(model.projection.mode == .bank ? "Balance" : "Running balance",
+                      subtitle: model.projection.mode == .bank ? "Actual, then projected" : nil, bold: true, range: range) { index in
                 let closing = summary.closing[index]
                 Text(closing.map(Format.money) ?? "–")
                     .fontWeight(.semibold)

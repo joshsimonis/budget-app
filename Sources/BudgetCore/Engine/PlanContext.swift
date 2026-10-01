@@ -65,7 +65,10 @@ public struct PlannedFlow: Hashable, Sendable, Identifiable {
     public var state: FlowState
     public var isOverridden: Bool
     public var periodID: UUID?
+    /// Set when bank data is available.
+    public var reconciliation: FlowReconciliation?
 
     public var id: OccurrenceKey { key }
     public var isInflow: Bool { plannedAmount.cents > 0 }
+    public var status: OccurrenceStatus? { reconciliation?.status }
 }
