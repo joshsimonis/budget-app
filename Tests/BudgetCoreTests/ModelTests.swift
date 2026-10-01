@@ -181,3 +181,15 @@ private func allDates(_ item: BudgetItem, _ span: DateSpan) -> [LocalDate] {
         #expect(again == bank) // deterministic
     }
 }
+
+@Suite struct DemoConsistencyTests {
+    @Test func demoHasExactlyOneMissedBill() {
+        let today = LocalDate(2026, 10, 1)
+        var document = SampleData.demo(today: today)
+        let bank = SampleData.demoBank(for: &document, today: today)
+        let projection = ProjectionEngine.run(document: document, today: today, bank: bank)
+        let missed = projection.flows.filter { $0.status == .missed }
+        #expect(missed.map(\.name) == ["Internet"])
+        #expect(projection.days.allSatisfy { ($0.closing ?? .zero) >= .zero })
+    }
+}

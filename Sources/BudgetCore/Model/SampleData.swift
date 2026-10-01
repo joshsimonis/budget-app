@@ -208,7 +208,8 @@ extension SampleData {
             timeZone.startOfDay(date).addingTimeInterval(Double(hour * 3600 + random(3000)))
         }
 
-        let history = DateSpan(start: today.adding(days: -56), end: today.adding(days: -1))
+        // Cover the whole window the grid shows (default: 8 weeks before this week).
+        let history = DateSpan(start: today.startOfWeek.adding(days: -7 * 9), end: today.adding(days: -1))
         let projection = ProjectionEngine.run(document: document, today: today, horizon: history)
         var transactions: [BankTransaction] = []
         var counter = 0
@@ -222,8 +223,8 @@ extension SampleData {
 
         for flow in projection.flows where flow.state == .planned && flow.kind == .item {
             guard let item = document.item(flow.key.sourceID) else { continue }
-            // Leave one recent bill unpaid so the demo shows a missed item.
-            if item.name == "Internet" && flow.date > today.adding(days: -20) { continue }
+            // Leave the latest Internet bill unpaid so the demo shows a missed item.
+            if item.name == "Internet" && flow.date > today.adding(days: -40) && flow.date < today.adding(days: -5) { continue }
             let account = flow.accountID.flatMap { upByAccount[$0] } ?? upIDs[1]
             let label = item.match?.patterns.first.map { $0.capitalized + " " + item.name } ?? item.name
             let shift = random(3) - 1
